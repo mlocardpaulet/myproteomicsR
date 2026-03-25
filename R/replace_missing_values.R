@@ -36,6 +36,9 @@ replace_missing_values <- function(input_table,
     stop("Please provide a feature name for the plot: it should be the name of the corresponding column.\n")
   }
   
+  # remove rows with NA log2_quan values:
+  input_table <- input_table[!is.na(input_table$log2_quan),]
+
   # replacement value:
   toreplace <- sapply(unique(input_table$filename), function(x) {
     quantile(input_table$log2_quan[input_table$filename == x], probs = quantile_replacement_val, na.rm = TRUE)
