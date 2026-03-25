@@ -15,7 +15,8 @@ devtools::install("path/to/myproteomicsR")
 If the source is on GitHub:
 
 ```r
-devtools::install_github("mlocardpaulet/myproteomicsR")
+# Install myproteomicsR
+pak::pak("mlocardpaulet/myproteomicsR")
 ```
 
 ## Usage
