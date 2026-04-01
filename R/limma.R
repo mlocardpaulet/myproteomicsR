@@ -21,7 +21,7 @@
 #' @importFrom dplyr select distinct
 #' @importFrom limma makeContrasts
 #' @export
-create_limma_design <- function(input_data, matrix_columns = c("condition", "replicate")) { #TODO: generalise with input: table with factors (fcon) + contrasts of interest
+create_limma_design <- function(input_data, matrix_columns = c("condition", "replicate"), all_cond_pairs = "V1-NEG") { #TODO: generalise with input: table with factors (fcon) + contrasts of interest
   
   fcon <- input_data %>% 
     select(c("filename", matrix_columns)) %>% 
@@ -32,8 +32,6 @@ create_limma_design <- function(input_data, matrix_columns = c("condition", "rep
   
   # all_cond_pairs <- combn(colnames(mat), 2, simplify = FALSE) %>% 
   #   sapply(paste, collapse = "-")
-  
-  all_cond_pairs <- "V1-NEG"
   
   colnames(mat) <- gsub('factor\\(fcon\\$replicate\\)', "rep", colnames(mat))
   
