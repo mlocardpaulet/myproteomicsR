@@ -1,3 +1,39 @@
+#' Convert a long-format quantification table to wide format
+#'
+#' Pivots \code{log2_quan} values from long format (one row per
+#' feature-sample combination) to wide format (one row per feature, one column
+#' per sample), preserving feature-level metadata columns.
+#'
+#' @param long_table A long-format data frame containing at least the columns
+#'   named by \code{feature_name}, \code{filename}, and \code{log2_quan}.
+#' @param feature_name Character. Name of the column that identifies features
+#'   (e.g. \code{"protein_group_accessions"} or \code{"site_ID"}).
+#'
+#' @return A wide-format \code{tibble} with one row per feature. Sample
+#'   \code{log2_quan} values appear as columns named after each
+#'   \code{filename}, and feature-level metadata columns are appended.
+#'
+#' @importFrom dplyr select distinct left_join all_of
+#' @importFrom tidyr pivot_wider
+pivot_quan_to_wide <- function(long_table, feature_name) {
+  sample_varying_cols <- c("filename", "condition", "replicate", "log2_quan",
+                           "quantity", "nr_precursors_used_for_quantification")
+  meta_cols <- setdiff(names(long_table), c(sample_varying_cols, feature_name))
+
+  wide_table <- long_table %>%
+    select(all_of(c(feature_name, "filename", "log2_quan"))) %>%
+    pivot_wider(names_from = filename, values_from = log2_quan)
+
+  if (length(meta_cols) > 0) {
+    feature_meta <- long_table %>%
+      select(all_of(c(feature_name, meta_cols))) %>%
+      distinct()
+    wide_table <- left_join(wide_table, feature_meta, by = feature_name)
+  }
+
+  wide_table
+}
+
 #' Write analysis results to a multi-sheet Excel workbook
 #'
 #' Assembles proteome and phosphoproteome analysis results into a named list
@@ -28,6 +64,11 @@
 #'   prefix or \code{.xlsx} extension). Default: \code{"output"}.
 #' @param path Character. Directory path where the file should be saved.
 #'   Must end with \code{"/"}. Default: \code{"/"}.
+#' @param wide_format Logical. If \code{TRUE}, the quantification tables (raw,
+#'   filtered, and after missing-value replacement) are exported in wide format
+#'   with one row per feature and one column per sample rather than in the
+#'   default long format. The measured-value count tables and the limma output
+#'   tables are not affected by this option. Default: \code{FALSE}.
 #'
 #' @return Invisibly returns \code{NULL}. Called for its side effect of writing
 #'   an Excel file to disk.
@@ -46,8 +87,18 @@ write_excel_output <- function(
     mv_counts_phosphoproteome,
     phosphoproteome_after_replacement,
     file_name = "output",
-    path = "/") {
-  
+    path = "/",
+    wide_format = FALSE) {
+
+  if (wide_format) {
+    unfiltered_table_proteome        <- pivot_quan_to_wide(unfiltered_table_proteome,        "protein_group_accessions")
+    filtered_table_proteome          <- pivot_quan_to_wide(filtered_table_proteome,          "protein_group_accessions")
+    proteome_after_replacement       <- pivot_quan_to_wide(proteome_after_replacement,       "protein_group_accessions")
+    unfiltered_table_phosphoproteome <- pivot_quan_to_wide(unfiltered_table_phosphoproteome, "site_ID")
+    filtered_table_phosphoproteome   <- pivot_quan_to_wide(filtered_table_phosphoproteome,   "site_ID")
+    phosphoproteome_after_replacement <- pivot_quan_to_wide(phosphoproteome_after_replacement, "site_ID")
+  }
+
   file.name <- paste0(path, gsub("-", "", Sys.Date()), "_", file_name, ".xlsx")
   cat("Write output in", file.name, "...\n")
   l.stat.results <- vector(mode = "list")
@@ -62,5 +113,5 @@ write_excel_output <- function(
   l.stat.results$`Psites after MV replace` <- phosphoproteome_after_replacement
   l.stat.results$`Psites Limma ouptut` <- stat_results_phosphoproteome
   write.xlsx(x = l.stat.results, file = file.name)
-  
+
 }
