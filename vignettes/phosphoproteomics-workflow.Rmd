@@ -1,14 +1,16 @@
 ---
 title: "Analysis of DIA results: Phosphoproteomics"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Phosphoproteomics workflow}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
+output: html_document
 date: "`r Sys.Date()`"
 ---
 
-```{r, echo = FALSE}
+```{r, echo = F}
+# Install myproteomicsR
+# pak::pak("mlocardpaulet/myproteomicsR")
+
+# load package
+library(myproteomicsR)
+
 library(knitr)
 ```
 
@@ -18,40 +20,21 @@ library(knitr)
 
 # Information on the study
 
+All the parameters for the analysis are in the file `Analysis_Parameters.R`. Please make sure to adjust the parameters in that file before running the analysis.
+
 ```{r}
-library(myproteomicsR)
-
-# --- Edit these paths and parameters before running ---
-
-# Spectronaut PTM Site BGS Factory Report (phosphoproteome)
-PATH_TO_INPUT_PTM <- "path/to/ptm_site_bgs_report.tsv"
-# Spectronaut Protein Group MLP Report (proteome)
-PATH_TO_INPUT_Proteome <- "path/to/protein_group_mlp_report.tsv"
-# Folder where the Excel output will be saved. Use "" for current directory.
-PATH_TO_OUTPUT <- ""
-
-# Minimum number of measured (non-NA) values required in at least one
-# condition for a feature to be retained.
-min_measured_val <- 2
-# Quantile of per-run measured values used for missing value imputation
-# (e.g. 0.01 = 1st percentile).
-quantile_replacement_val <- 0.01
+source("Analysis_Parameters.R")
 ```
-
-The path to input files are:
-- `r PATH_TO_INPUT_Proteome` for the proteome.
-- `r PATH_TO_INPUT_PTM` for the phosphoproteome.
-
-Results will be saved in `r PATH_TO_OUTPUT` (adjust the path above if you want
-to save the results in a specific folder).
 
 # Load input files
 
 ```{r}
+
 ltab <- open_phos_prot_files(
   path_to_input_protein = PATH_TO_INPUT_Proteome,
   path_to_input_ptm = PATH_TO_INPUT_PTM
 )
+
 ```
 
 There are `r nrow(ltab$proteome)` rows in the protein groups table.
@@ -62,13 +45,15 @@ There are `r nrow(ltab$ptm)` rows in the phosphorylation sites table.
 ## Boxplots of quantitative values
 
 ```{r}
+
 lapply(ltab, plot_boxplot)
+
 ```
 
 ## PCA plots
 
 ```{r}
-lp <- plot_PCA(ltab$proteome, title = "Proteome", feature_name = "protein_group_accessions")
+lp <- plot_PCA(ltab$prot, title = "Proteome", feature_name = "protein_group_accessions")
 print(lp[[1]])
 
 lp <- plot_PCA(ltab$ptm, title = "Phosphorylated sites", feature_name = "site_ID")
@@ -80,17 +65,20 @@ print(lp[[1]])
 ## Filter contaminants
 
 ```{r}
-table(ltab$proteome$contaminant, ltab$proteome$filename)
+
+table(ltab$prot$contaminant, ltab$prot$filename)
 table(ltab$ptm$contaminant, ltab$ptm$filename)
 
 ltab_filtered <- lapply(ltab, function(x) {
-  x %>% filter(contaminant == FALSE)
+  x[x$contaminant == FALSE,]
 })
+
 ```
 
 ## Filter based on missing values
 
 ```{r}
+
 ltab_filtered <- lapply(seq_along(ltab_filtered), function(x) {
   if (names(ltab_filtered)[x] == "proteome") {
     filter_value_count(input_table = ltab_filtered[[x]], 
@@ -106,32 +94,37 @@ ltab_filtered <- lapply(seq_along(ltab_filtered), function(x) {
 })
 names(ltab_filtered) <- c("proteome", "ptm")
 
-g <- plot_measured_values(ltab_filtered$proteome$value_count, title = "Proteome: distribution of the number of measured values per feature and condition")
+g <-  plot_measured_values(ltab_filtered$proteome$value_count, title = "Proteome: distribution of the number of measured values per feature and condition")
 print(g)
-g <- plot_measured_values(ltab_filtered$ptm$value_count, title = "Phosphoproteome: distribution of the number of measured values per feature and condition")
+g <-  plot_measured_values(ltab_filtered$ptm$value_count, title = "Phosphoproteome: distribution of the number of measured values per feature and condition")
 print(g)
+
 ```
 
 ## Check the CVs distributions
 
 ```{r}
+
 prot.cv <- feature_cvs(input_table = ltab_filtered$proteome$filtered_table, 
                        feature_name = "protein_group_accessions")
-ptm.cv  <- feature_cvs(ltab_filtered$ptm$filtered_table, 
-                       feature_name = "site_ID")
+ptm.cv <- feature_cvs(ltab_filtered$ptm$filtered_table, 
+                      feature_name = "site_ID")
 
-g <- plot_cvs(prot.cv, title = "Proteome: distribution of the CVs per feature and condition")
+g <-  plot_cvs(prot.cv, title = "Proteome: distribution of the CVs per feature and condition")
 print(g)
-g <- plot_cvs(ptm.cv, title = "Phosphoproteome: distribution of the CVs per feature and condition")
+g <-  plot_cvs(ptm.cv, title = "Phosphoproteome: distribution of the CVs per feature and condition")
 print(g)
+
 ```
-
 # Missing value replacement
 
 ```{r}
-# Replace missing values with the per-run 1st percentile of measured values.
-# Replacement is applied only when all values are missing in one condition.
-ltab_replaced <- wrap_replace_missing_values(ltab_filtered, quantile_replacement_val)
+
+# Replace missing values with 1% quantile of the measured values in the corresponding run
+# Replace only when all are missing entirely in one condition
+
+ltab_replaced <- wrap_replace_missing_values(ltab_filtered)
+
 ```
 
 ## PCA plots
@@ -139,11 +132,9 @@ ltab_replaced <- wrap_replace_missing_values(ltab_filtered, quantile_replacement
 ```{r}
 lp <- plot_PCA(ltab_replaced$proteome, title = "Proteome before stats", feature_name = "protein_group_accessions")
 print(lp[[1]])
-print(lp[[2]])
 
 lp <- plot_PCA(ltab_replaced$ptm, title = "Phosphorylated sites before stats", feature_name = "site_ID")
 print(lp[[1]])
-print(lp[[2]])
 ```
 
 # Statistical analysis
@@ -156,20 +147,22 @@ Nucleic Acids Research 43(7), e47.
 ## Make contrast matrix
 
 ```{r}
-ldesign_prot <- create_limma_design(ltab_replaced$proteome)
-ldesign_phos <- create_limma_design(ltab_replaced$ptm)
+ldesign <- lapply(ltab_replaced, create_limma_design)
 
 cat("Design and contrasts for the proteome:\n")
-kable(ldesign_prot)
+kable(ldesign$proteome)
 cat("Design and contrasts for the phosphoproteome:\n")
-kable(ldesign_phos)
+kable(ldesign$ptm)
 ```
 
 ```{r}
 cat("Limma for the proteome:\n")
-res_prot <- run_limma(ltab_replaced$proteome, ldesign_prot$design, ldesign_prot$contrasts, feature_name = "protein_group_accessions")
+res_prot <- run_limma(ltab_replaced$proteome, ldesign$proteome$design, ldesign$proteome$contrasts, feature_name = "protein_group_accessions")
 cat("Limma for the phosphoproteome:\n")
-res_phos <- run_limma(ltab_replaced$ptm, ldesign_phos$design, ldesign_phos$contrasts, feature_name = "site_ID")
+res_phos <- run_limma(input_data = ltab_replaced$ptm, 
+                      design = ldesign$ptm$design, 
+                      contrasts = ldesign$ptm$contrasts, 
+                      feature_name = "site_ID")
 ```
 
 # Plot Limma results
@@ -182,22 +175,24 @@ plot_volcano(res_phos, title = "Phosphoproteome")
 # Save Limma results
 
 ```{r}
+# Write the first data set in a new workbook
 write_excel_output(
-  unfiltered_table_proteome         = ltab$proteome,
-  filtered_table_proteome           = ltab_filtered$proteome$filtered_table,
-  stat_results_proteome             = res_prot,
-  mv_counts_proteome                = ltab_filtered$proteome$value_count,
-  proteome_after_replacement        = ltab_replaced$proteome,
-  unfiltered_table_phosphoproteome  = ltab$ptm,
-  filtered_table_phosphoproteome    = ltab_filtered$ptm$filtered_table,
-  stat_results_phosphoproteome      = res_phos,
-  mv_counts_phosphoproteome         = ltab_filtered$ptm$value_count,
+  unfiltered_table_proteome = ltab$proteome,
+  filtered_table_proteome = ltab_filtered$proteome$filtered_table,
+  stat_results_proteome = res_prot,
+  mv_counts_proteome = ltab_filtered$proteome$value_count,
+  unfiltered_table_phosphoproteome = ltab$ptm,
+  filtered_table_phosphoproteome = ltab_filtered$ptm$filtered_table,
+  stat_results_phosphoproteome = res_phos,
+  mv_counts_phosphoproteome = ltab_filtered$ptm$value_count,
   phosphoproteome_after_replacement = ltab_replaced$ptm,
+  proteome_after_replacement = ltab_replaced$proteome,
   file_name = "DIA_analysis_results",
-  path      = PATH_TO_OUTPUT)
+  path = PATH_TO_OUTPUT)
 ```
 
----
+
+----------------
 
 ```{r}
 sessionInfo()
