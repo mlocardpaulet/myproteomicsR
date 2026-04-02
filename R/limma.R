@@ -1,13 +1,17 @@
-#' Build a limma design matrix and all pairwise contrasts
+#' Build a limma design matrix and contrasts
 #'
 #' Constructs a no-intercept model matrix from the conditions present in
-#' \code{input_data} and automatically generates all pairwise contrasts between
-#' conditions using \code{\link[limma]{makeContrasts}}.
+#' \code{input_data} and builds a contrast matrix for the specified comparisons
+#' using \code{\link[limma]{makeContrasts}}.
 #'
 #' @param input_data A long-format data frame containing at least the columns
-#'   \code{condition} and \code{filename} (one row per feature-run combination).
+#'   \code{condition}, \code{replicate}, and \code{filename} (one row per
+#'   feature-run combination).
 #' @param matrix_columns Character vector. Columns used to build the model
 #'   matrix. Default: \code{c("condition", "replicate")}.
+#' @param all_cond_pairs Character vector of contrasts to pass to
+#'   \code{\link[limma]{makeContrasts}}, in the form \code{"condA-condB"}.
+#'   Default: \code{"V1-NEG"}.
 #'
 #' @return A named list with two elements:
 #'   \describe{
