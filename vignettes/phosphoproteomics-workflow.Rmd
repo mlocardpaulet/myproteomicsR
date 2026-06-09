@@ -23,7 +23,7 @@ library(knitr)
 All the parameters for the analysis are in the file `Analysis_Parameters.R`. Please make sure to adjust the parameters in that file before running the analysis.
 
 ```{r}
-source("Analysis_Parameters.R")
+source("Analysis_Parameters_phosphoproteomics-workflow.R")
 ```
 
 # Load input files

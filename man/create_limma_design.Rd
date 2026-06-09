@@ -2,16 +2,25 @@
 % Please edit documentation in R/limma.R
 \name{create_limma_design}
 \alias{create_limma_design}
-\title{Build a limma design matrix and all pairwise contrasts}
+\title{Build a limma design matrix and contrasts}
 \usage{
-create_limma_design(input_data, matrix_columns = c("condition", "replicate"))
+create_limma_design(
+  input_data,
+  matrix_columns = c("condition", "replicate"),
+  all_cond_pairs = "V1-NEG"
+)
 }
 \arguments{
 \item{input_data}{A long-format data frame containing at least the columns
-\code{condition} and \code{filename} (one row per feature-run combination).}
+\code{condition}, \code{replicate}, and \code{filename} (one row per
+feature-run combination).}
 
 \item{matrix_columns}{Character vector. Columns used to build the model
 matrix. Default: \code{c("condition", "replicate")}.}
+
+\item{all_cond_pairs}{Character vector of contrasts to pass to
+\code{\link[limma]{makeContrasts}}, in the form \code{"condA-condB"}.
+Default: \code{"V1-NEG"}.}
 }
 \value{
 A named list with two elements:
@@ -25,6 +34,6 @@ comparisons.}
 }
 \description{
 Constructs a no-intercept model matrix from the conditions present in
-\code{input_data} and automatically generates all pairwise contrasts between
-conditions using \code{\link[limma]{makeContrasts}}.
+\code{input_data} and builds a contrast matrix for the specified comparisons
+using \code{\link[limma]{makeContrasts}}.
 }

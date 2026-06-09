@@ -22,6 +22,8 @@ combination and the following columns:
 (\code{PG.ProteinAccessions}).}
 \item{nr_precursors_used_for_quantification}{Number of precursors used
 for quantification (\code{PG.NrOfPrecursorsUsedForQuantification}).}
+\item{nr_proteotypic_peptide_seq_for_id}{Number of proteotypic peptide
+sequences used for identification (\code{NA} for Spectronaut outputs).}
 \item{quantity}{Raw protein group quantity (\code{PG.Quantity}).}
 \item{log2_quan}{Log2-transformed quantity.}
 }

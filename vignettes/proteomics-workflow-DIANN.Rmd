@@ -1,0 +1,108 @@
+---
+title: "Analysis of DIA results analysed with DIA-NN: Proteomics"
+output: html_document
+date: "`r Sys.Date()`"
+---
+
+```{r, echo = F}
+# Install myproteomicsR
+# pak::pak("mlocardpaulet/myproteomicsR")
+# a specific branch:
+# remotes::install_github("mlocardpaulet/myproteomicsR@PG-DIANN")
+
+# load package
+library(myproteomicsR)
+
+library(knitr)
+```
+
+*This script was developed for the analysis of proteomics data obtained from DIA mass spectrometry analysed with DIA-NN* 
+*The script reads in the data (pg_matrix.tsv), performs basic preprocessing, and provides an overview of the results (QC plots).*
+
+# Information on the study
+
+All the parameters for the analysis are in the file `Analysis_Parameters.R`. Please make sure to adjust the parameters in that file before running the analysis.
+
+```{r}
+source("Analysis_Parameters_proteome_diann.R")
+```
+
+# Load input files
+
+```{r}
+
+tab <- load_DIANN_protein_input(
+  PATH_TO_INPUT_Proteome
+)
+
+```
+
+There are `r nrow(tab)` rows in the protein groups table.
+It contains `r length(unique(tab$protein_group_accessions))` protein groups.
+
+# Overview of the input data
+
+## Boxplots of quantitative values
+
+```{r}
+
+plot_boxplot(tab)
+
+```
+
+## PCA plot
+
+```{r}
+
+p <- tab %>% 
+  mutate(condition = filename) %>% 
+  plot_PCA(., title = "Proteome raw", feature_name = "protein_group_accessions")
+print(p)
+
+```
+
+# Pre-processing
+
+## Filter contaminants
+
+```{r}
+
+table(tab$contaminant, tab$filename)
+
+tab_filtered <- tab[tab$contaminant == FALSE,]
+
+```
+
+## Filter based on missing values
+
+```{r}
+
+tab_filtered$condition <- rep("cond", nrow(tab_filtered))
+tab_filtered <- filter_value_count(input_table = tab_filtered,
+                                   feature_name = "protein_group_accessions",
+                                   title = "Proteome: distribution of the number of measured values per feature and condition",
+                                   min_measured_val = min_measured_val)
+
+g <-  plot_measured_values(tab_filtered$value_count, title = "Proteome: distribution of the number of measured values per feature and condition")
+print(g)
+
+```
+
+## Check the CVs distributions
+
+```{r}
+
+prot.cv <- feature_cvs(input_table = tab_filtered$filtered_table, 
+                       feature_name = "protein_group_accessions")
+
+g <-  plot_cvs(prot.cv, title = "Proteome: distribution of the CVs per feature and condition")
+print(g)
+
+```
+
+
+----------------
+
+```{r}
+sessionInfo()
+```
