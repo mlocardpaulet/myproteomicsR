@@ -16,7 +16,8 @@ write_excel_output(
   mv_counts_phosphoproteome,
   phosphoproteome_after_replacement,
   file_name = "output",
-  path = "/"
+  path = "/",
+  wide_format = FALSE
 )
 }
 \arguments{
@@ -56,6 +57,12 @@ prefix or \code{.xlsx} extension). Default: \code{"output"}.}
 
 \item{path}{Character. Directory path where the file should be saved.
 Must end with \code{"/"}. Default: \code{"/"}.}
+
+\item{wide_format}{Logical. If \code{TRUE}, the quantification tables (raw,
+filtered, and after missing-value replacement) are exported in wide format
+with one row per feature and one column per sample rather than in the
+default long format. The measured-value count tables and the limma output
+tables are not affected by this option. Default: \code{FALSE}.}
 }
 \value{
 Invisibly returns \code{NULL}. Called for its side effect of writing

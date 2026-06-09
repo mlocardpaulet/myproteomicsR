@@ -18,12 +18,14 @@
 #'       (\code{PG.ProteinAccessions}).}
 #'     \item{nr_precursors_used_for_quantification}{Number of precursors used
 #'       for quantification (\code{PG.NrOfPrecursorsUsedForQuantification}).}
+#'     \item{nr_proteotypic_peptide_seq_for_id}{Number of proteotypic peptide
+#'       sequences used for identification (placeholder; always \code{NA}).}
 #'     \item{quantity}{Raw protein group quantity (\code{PG.Quantity}).}
 #'     \item{log2_quan}{Log2-transformed quantity.}
 #'   }
 #'
 #' @importFrom data.table fread
-#' @importFrom dplyr select rename mutate distinct all_of
+#' @importFrom dplyr select rename mutate relocate distinct all_of
 #' @export
 load_Spectronaut_protein_input <- function(path_to_input_protein) {
   
@@ -53,7 +55,9 @@ load_Spectronaut_protein_input <- function(path_to_input_protein) {
            protein_group_accessions = PG.ProteinAccessions,
            nr_precursors_used_for_quantification = PG.NrOfPrecursorsUsedForQuantification,
            quantity = PG.Quantity) %>% 
-    mutate(log2_quan = log2(quantity)) %>%
+    mutate(log2_quan = log2(quantity),
+           nr_proteotypic_peptide_seq_for_id = NA) %>%
+    relocate(nr_proteotypic_peptide_seq_for_id, .before = quantity) %>%
     distinct() 
   
 }
