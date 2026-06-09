@@ -4,7 +4,7 @@
 \alias{plot_PCA}
 \title{PCA scatter plots (PC1/PC2 and PC3/PC4)}
 \usage{
-plot_PCA(input_table, title = "", feature_name = NULL)
+plot_PCA(input_table, title = "", feature_name = NULL, color_by = "condition")
 }
 \arguments{
 \item{input_table}{A long-format data frame containing at least
@@ -15,6 +15,10 @@ the column referenced by \code{feature_name}.}
 
 \item{feature_name}{Character. Name of the column that identifies features.
 Must not be \code{NULL}.}
+
+\item{color_by}{Character. Name of the column used for colour coding.
+If the column is numeric a continuous viridis scale is used; otherwise a
+discrete viridis scale is applied. Default: \code{"condition"}.}
 }
 \value{
 A list of two \code{ggplot} objects: \code{[[1]]} for PC1 vs PC2 and

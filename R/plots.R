@@ -74,6 +74,9 @@ plot_missing_values_per_run <- function(input_table, title = "") {
 #' @param title Character. Plot title. Default: \code{""}.
 #' @param feature_name Character. Name of the column that identifies features.
 #'   Must not be \code{NULL}.
+#' @param color_by Character. Name of the column used for colour coding.
+#'   If the column is numeric a continuous viridis scale is used; otherwise a
+#'   discrete viridis scale is applied. Default: \code{"condition"}.
 #'
 #' @return A list of two \code{ggplot} objects: \code{[[1]]} for PC1 vs PC2 and
 #'   \code{[[2]]} for PC3 vs PC4.
@@ -81,10 +84,10 @@ plot_missing_values_per_run <- function(input_table, title = "") {
 #' @importFrom tidyr pivot_wider
 #' @importFrom tibble column_to_rownames rownames_to_column
 #' @importFrom dplyr select left_join distinct
-#' @importFrom ggplot2 ggplot aes geom_point scale_color_viridis_d labs theme_minimal
+#' @importFrom ggplot2 ggplot aes geom_point scale_color_viridis_d scale_color_viridis_c labs theme_minimal
 #' @importFrom ggrepel geom_text_repel
 #' @export
-plot_PCA <- function(input_table, title = "", feature_name = NULL) {
+plot_PCA <- function(input_table, title = "", feature_name = NULL, color_by = "condition") {
   
   if (is.null(feature_name)) {
     stop("Please provide a feature name for the plot: it should be the name of the corresponding column.\n")
@@ -107,27 +110,31 @@ plot_PCA <- function(input_table, title = "", feature_name = NULL) {
   
   gtab <- as.data.frame(pres$x) %>% 
     rownames_to_column("filename") %>% 
-    left_join(input_table %>% select(filename, condition, replicate) %>% distinct(), by = "filename") 
+    left_join(input_table %>% select(filename, condition, replicate, all_of(color_by)) %>% distinct(), by = "filename") 
+  
+  color_scale <- if (is.numeric(gtab[[color_by]])) scale_color_viridis_c() else scale_color_viridis_d()
   
   g1 <- gtab %>% 
     ggplot(aes(x = PC1,
                    y = PC2)) +
-    geom_point(aes(color = condition), size = 3, alpha = 0.8) +
-    scale_color_viridis_d() +
+    geom_point(aes(color = .data[[color_by]]), size = 3, alpha = 0.8) +
+    color_scale +
     geom_text_repel(aes(label = replicate), size = 3, max.overlaps = 20) +
     labs(x = paste0("PC1 (", round(summary(pres)$importance[2,1]*100, 2), "%)"),
          y = paste0("PC2 (", round(summary(pres)$importance[2,2]*100, 2), "%)"),
+         color = color_by,
          title = title) +
     theme_minimal() 
   
   g2 <- gtab %>% 
     ggplot(aes(x = PC3,
                    y = PC4)) +
-    geom_point(aes(color = condition), size = 3, alpha = 0.8) +
-    scale_color_viridis_d() +
+    geom_point(aes(color = .data[[color_by]]), size = 3, alpha = 0.8) +
+    color_scale +
     geom_text_repel(aes(label = replicate), size = 3, max.overlaps = 20) +
     labs(x = paste0("PC3 (", round(summary(pres)$importance[2,3]*100, 2), "%)"),
          y = paste0("PC4 (", round(summary(pres)$importance[2,4]*100, 2), "%)"),
+         color = color_by,
          title = title) +
     theme_minimal() 
   
