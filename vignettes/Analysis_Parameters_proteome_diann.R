@@ -8,7 +8,7 @@
 # Input files
 # -----------------------------------------------------------------------------
 
-# Path to the Spectronaut Protein Group (MLP) .tsv report
+# Path to the DIA-NN Protein Group matrix .tsv report
 PATH_TO_INPUT_Proteome <- "path/to/DIANN_protein_report.tsv"
 
 # -----------------------------------------------------------------------------
@@ -22,7 +22,7 @@ PATH_TO_OUTPUT <- "path/to/output/"
 # Contaminant filtering
 # -----------------------------------------------------------------------------
 
-# Column in the Spectronaut report that contains contaminant information
+# Column in the DIA-NN Protein Group matrix that contains contaminant information
 CONTAMINANT_COLUMN <- "Protein.Group"
 
 # String pattern that identifies contaminant entries in CONTAMINANT_COLUMN
