@@ -19,7 +19,7 @@
 #'     \item{nr_precursors_used_for_quantification}{Number of precursors used
 #'       for quantification (\code{PG.NrOfPrecursorsUsedForQuantification}).}
 #'     \item{nr_proteotypic_peptide_seq_for_id}{Number of proteotypic peptide
-#'       sequences used for identification (placeholder; always \code{NA}).}
+#'       sequences used for identification (\code{NA} for Spectronaut outputs).}
 #'     \item{quantity}{Raw protein group quantity (\code{PG.Quantity}).}
 #'     \item{log2_quan}{Log2-transformed quantity.}
 #'   }
@@ -173,4 +173,74 @@ open_phos_prot_files <- function(path_to_input_protein, path_to_input_ptm) {
     proteome = load_Spectronaut_protein_input(path_to_input_protein),
     ptm = load_Spectronaut_ptm_input(path_to_input_ptm)
   )
+}
+
+
+#' Load a DIANN pg matrix
+#'
+#' Reads a tab-separated DIANN Protein Group matrix, verifies that all
+#' required columns are present, selects and renames relevant columns, and
+#' adds a log2-transformed quantity column.
+#'
+#' @param path_to_input_protein Character. Path to the DIANN \code{.tsv}
+#'   Protein Group matrix file (pg_matrix).
+#'
+#' @return A \code{tibble} in long format with one row per protein group-run
+#'   combination and the following columns:
+#'   \describe{
+#'     \item{condition}{Experimental condition (\code{NA} for DIANN pg_matrix outputs).}
+#'     \item{filename}{Raw file name (corresponding headers in the pg_matrix).}
+#'     \item{replicate}{Replicate label (\code{NA} for DIANN pg_matrix outputs).}
+#'     \item{pg_informations}{FASTA headers (\code{NA} for DIANN pg_matrix outputs}).}
+#'     \item{protein_group_accessions}{Protein accessions
+#'       (\code{Protein.Group}).}
+#'     \item{nr_precursors_used_for_quantification}{Number of precursors used
+#'       for quantification (\code{NA} for DIANN pg_matrix outputs).}
+#'     \item{nr_proteotypic_peptide_seq_for_id}{Number of proteotypic peptide
+#'       sequences used for identification (\code{N.Proteotypic.Sequences}).}
+#'     \item{quantity}{Raw protein group quantity (from corresponding columns in the DIANN pg_matrix).}
+#'     \item{log2_quan}{Log2-transformed quantity.}
+#'   }
+#'
+#' @importFrom data.table fread
+#' @importFrom dplyr select rename mutate distinct all_of contains
+#' @importFrom tidyr pivot_longer
+#' @export
+load_DIANN_protein_input <- function(path_to_input_protein, remove_path = TRUE) {
+  
+  # Load the proteome data from Spectronaut report
+  proteome_data <- fread(path_to_input_protein)
+  
+  # Check if the necessary columns are present
+  required_columns <- c("Protein.Group",
+                        "N.Proteotypic.Sequences")
+  if (!all(required_columns %in% colnames(proteome_data))) {
+    stop("The input file does not contain all required columns: ", paste(required_columns, collapse = ", "))
+  }
+  
+  proteome_data$contaminant <- ifelse(grepl(CONTAMINANT_FLAG, unlist(proteome_data[,names(proteome_data) == CONTAMINANT_COLUMN, with = F]), fixed = T), TRUE, FALSE)
+  
+  proteome_data <- proteome_data %>% 
+    select(all_of(c(required_columns, names(.)[grepl("\\", names(.), fixed = T)], "contaminant"))) %>% 
+    mutate(condition = NA,
+           replicate = NA,
+           pg_informations = NA,
+           nr_precursors_used_for_quantification = NA,
+           nr_proteotypic_peptide_seq_for_id = N.Proteotypic.Sequences
+           ) %>%
+    rename(protein_group_accessions = Protein.Group) %>% 
+    pivot_longer(cols = contains("\\"), names_to = "filename", values_to = "quantity") %>% 
+    mutate(log2_quan = log2(quantity)) %>%
+    distinct() %>%
+    select(condition, filename, replicate, pg_informations, protein_group_accessions,
+           nr_precursors_used_for_quantification, nr_proteotypic_peptide_seq_for_id,
+           quantity, log2_quan, contaminant)
+  
+  if (remove_path) {
+    cat(" -> Remove path from filename...\n")
+    proteome_data$filename <- gsub(".*\\\\(.+)\\.raw", "\\1", proteome_data$filename)
+  }
+  
+  return(proteome_data)
+  
 }
