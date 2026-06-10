@@ -111,19 +111,29 @@ run_limma <- function(input_data, design, contrasts, feature_name = NULL) {
       tt$contrast = x
       tt$feature = rownames(tt)
       
-      ## count values per condtion
-      cond1 = gsub("-.+", "", x)
-      cond2 = gsub(".+-", "", x)
-      runs1 = rownames(design)[design[, cond1] == 1]
-      runs2 = rownames(design)[design[, cond2] == 1]
-      
-      tt %>% 
-        mutate(
-          cond1 = cond1,
-          cond2 = cond2,
-          count_val_cond1 = rowSums(!is.na(limma_input[, runs1]))[match(feature, rownames(limma_input))],
-          count_val_cond2 = rowSums(!is.na(limma_input[, runs2]))[match(feature, rownames(limma_input))]
-        )
+      if (!grepl("-", x)) {
+        runs = rownames(design)[design[, x] > 0]
+        
+        tt %>% 
+          mutate(
+            cond = x,
+            count_val_cond = rowSums(!is.na(limma_input[, runs]))[match(feature, rownames(limma_input))]
+          )
+      } else {
+        ## count values per condtion
+        cond1 = gsub("-.+", "", x)
+        cond2 = gsub(".+-", "", x)
+        runs1 = rownames(design)[design[, cond1] == 1]
+        runs2 = rownames(design)[design[, cond2] == 1]
+        
+        tt %>% 
+          mutate(
+            cond1 = cond1,
+            cond2 = cond2,
+            count_val_cond1 = rowSums(!is.na(limma_input[, runs1]))[match(feature, rownames(limma_input))],
+            count_val_cond2 = rowSums(!is.na(limma_input[, runs2]))[match(feature, rownames(limma_input))]
+          )
+      }
     }) %>% 
     rbindlist()
   
