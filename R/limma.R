@@ -25,22 +25,34 @@
 #' @importFrom dplyr select distinct
 #' @importFrom limma makeContrasts
 #' @export
-create_limma_design <- function(input_data, matrix_columns = c("condition", "replicate"), all_cond_pairs = "V1-NEG") { #TODO: generalise with input: table with factors (fcon) + contrasts of interest
+create_limma_design <- function(input_data, matrix_columns = c("condition", "replicate"), all_cond_pairs = NULL) {
   
-  fcon <- input_data %>% 
-    select(c("filename", matrix_columns)) %>% 
+  fcon <- input_data %>%
+    select(c("filename", matrix_columns)) %>%
     distinct()
-  mat <- model.matrix(~ 0+fcon$condition+factor(fcon$replicate)) #TODO: make flexible
+  
+  fcon[matrix_columns] <- lapply(fcon[matrix_columns], function(x) if (!is.factor(x) && !is.numeric(x)) factor(x) else x)
+  
+  formula_terms <- paste(paste0("fcon$", matrix_columns), collapse = "+")
+  mat <- model.matrix(as.formula(paste("~ 0 +", formula_terms)))
   rownames(mat) <- fcon$filename
-  colnames(mat) <- gsub("fcon\\$condition", "", colnames(mat))
   
-  # all_cond_pairs <- combn(colnames(mat), 2, simplify = FALSE) %>% 
-  #   sapply(paste, collapse = "-")
+  # Clean column names: remove all "fcon$" prefixes and any remaining artifacts
+  colnames(mat) <- gsub("fcon\\$", "", colnames(mat))
   
-  colnames(mat) <- gsub('factor\\(fcon\\$replicate\\)', "rep", colnames(mat))
+  # Check if all_cond_pairs is NULL
+  if (is.null(all_cond_pairs) || length(all_cond_pairs) == 0) {
+    possible_contrasts <- combn(colnames(mat), 2, simplify = FALSE) %>%
+      sapply(paste, collapse = "-")
+    stop(
+      "Error: 'all_cond_pairs' cannot be NULL or empty. ",
+      "It should be a character vector of contrasts in the form 'condA-condB'. ",
+      "Possible options based on your design matrix are:\n",
+      paste("-", possible_contrasts, collapse = "\n")
+    )
+  }
   
   list(design = mat, contrasts = makeContrasts(contrasts = all_cond_pairs, levels = colnames(mat)))
-  
 }
 
 #' Run a limma differential abundance analysis
