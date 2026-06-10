@@ -2,38 +2,100 @@
 % Please edit documentation in R/limma.R
 \name{create_limma_design}
 \alias{create_limma_design}
-\title{Build a limma design matrix and contrasts}
+\title{Build a limma design matrix and contrasts for differential abundance analysis}
 \usage{
-create_limma_design(
-  input_data,
-  matrix_columns = c("condition", "replicate"),
-  all_cond_pairs = "V1-NEG"
-)
+create_limma_design(input_data, formula = ~condition, all_cond_pairs = NULL)
 }
 \arguments{
-\item{input_data}{A long-format data frame containing at least the columns
-\code{condition}, \code{replicate}, and \code{filename} (one row per
-feature-run combination).}
+\item{input_data}{A long-format data frame containing at least the columns:
+\itemize{
+\item{\code{filename}: Unique identifiers for each run/sample.}
+\item{\code{condition}: Experimental condition (e.g., "BFG", "ASC").}
+\item{Other variables included in \code{formula} (if any).}
+}
+One row per feature-run combination is expected.}
 
-\item{matrix_columns}{Character vector. Columns used to build the model
-matrix. Default: \code{c("condition", "replicate")}.}
+\item{formula}{A formula specifying the design matrix. Default: \code{~ condition},
+which creates a design matrix for the \code{condition} variable only.
+Use standard R formula syntax to include additional terms or interactions. Examples:
+\itemize{
+\item{\code{~ condition}: Main effect of condition (default).}
+\item{\code{~ condition + BMI}: Main effects of condition and BMI.}
+\item{\code{~ condition * BMI}: Main effects + interaction between condition and BMI.}
+}}
 
-\item{all_cond_pairs}{Character vector of contrasts to pass to
-\code{\link[limma]{makeContrasts}}, in the form \code{"condA-condB"}.
-Default: \code{"V1-NEG"}.}
+\item{all_cond_pairs}{A character vector of contrasts to pass to
+\code{\link[limma]{makeContrasts}}, in the form \code{"term1-term2"} or \code{"term"}.
+If \code{NULL}, the function will stop and suggest all possible pairwise contrasts
+based on the design matrix. Examples:
+\itemize{
+\item{\code{"BFG-ASC"}: Difference between BFG and ASC.}
+\item{\code{"BMI"}: Main effect of BMI (if included in the formula).}
+\item{\code{"conditionBFG:BMI"}: Interaction effect (if interaction is included in the formula).}
+}}
 }
 \value{
 A named list with two elements:
 \describe{
-\item{design}{A numeric \code{matrix} — the model (design) matrix with
-filenames as row names and conditions as column names.}
-\item{contrasts}{A contrast matrix produced by
-\code{\link[limma]{makeContrasts}} covering all pairwise condition
-comparisons.}
+\item{design}{A numeric \code{matrix} — the model (design) matrix with filenames as row names
+and terms from the formula as column names. Column names are cleaned to be valid R names.}
+\item{contrasts}{A contrast matrix produced by \code{\link[limma]{makeContrasts}} for the
+specified \code{all_cond_pairs}.}
 }
 }
 \description{
-Constructs a no-intercept model matrix from the conditions present in
-\code{input_data} and builds a contrast matrix for the specified comparisons
-using \code{\link[limma]{makeContrasts}}.
+Constructs a model matrix from the variables specified in the \code{formula} and builds
+a contrast matrix for the specified comparisons using \code{\link[limma]{makeContrasts}}.
+This function is designed for experimental designs with categorical conditions (e.g., "BFG", "ASC").
+}
+\section{Design Matrix and Contrasts}{
+
+The design matrix is built using the provided \code{formula}, which allows for flexible
+modeling of main effects and interactions. The function automatically:
+\itemize{
+\item{Converts non-factor columns (except \code{filename}) to factors.}
+\item{Cleans column names to remove \code{fcon$} prefixes and ensure validity for \code{limma}.}
+\item{Generates contrasts for the specified comparisons.}
+}
+If \code{all_cond_pairs} is \code{NULL}, the function will suggest all possible pairwise contrasts
+based on the design matrix.
+}
+
+\section{Examples}{
+
+\preformatted{
+# Example 1: Default usage (condition only)
+design_result <- create_limma_design(
+  input_data = my_data,
+  all_cond_pairs = c("BFG-ASC")
+)
+
+# Example 2: Include BMI as a covariate
+design_result <- create_limma_design(
+  input_data = my_data,
+  formula = ~ condition + BMI,
+  all_cond_pairs = c("BFG-ASC", "BMI")
+)
+
+# Example 3: With interaction between condition and BMI
+design_result <- create_limma_design(
+  input_data = my_data,
+  formula = ~ condition * BMI,
+  all_cond_pairs = c("BFG-ASC", "BMI.conditionBFG")
+)
+
+# Example 4: Let the function suggest contrasts
+tryCatch(
+  design_result <- create_limma_design(
+    input_data = my_data,
+    formula = ~ condition + BMI
+  ),
+  error = function(e) print(e$message)
+)
+}
+}
+
+\seealso{
+\code{\link[limma]{makeContrasts}} for details on contrast specifications.
+\code{\link[limma]{model.matrix}} for details on design matrices.
 }

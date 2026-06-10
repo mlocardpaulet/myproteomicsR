@@ -2,37 +2,96 @@
 % Please edit documentation in R/limma.R
 \name{run_limma}
 \alias{run_limma}
-\title{Run a limma differential abundance analysis}
+\title{Run limma differential abundance analysis}
 \usage{
 run_limma(input_data, design, contrasts, feature_name = NULL)
 }
 \arguments{
-\item{input_data}{A long-format data frame containing at least the columns
-\code{filename}, \code{log2_quan}, and the column referenced by
-\code{feature_name}.}
+\item{input_data}{A long-format data frame containing at least the columns:
+\itemize{
+\item{\code{filename}: Unique identifiers for each run/sample.}
+\item{\code{log2_quan}: Log2-transformed quantification values.}
+\item{A column specified by \code{feature_name} (e.g., \code{protein_group_accessions}).}
+}
+One row per feature-run combination is expected.}
 
-\item{design}{A numeric design matrix as returned by the
-\code{design} element of \code{\link{create_limma_design}}.}
+\item{design}{A numeric design matrix as returned by \code{\link{create_limma_design}}.
+This matrix should have filenames as row names and design terms as column names.}
 
-\item{contrasts}{A contrast matrix as returned by the \code{contrasts}
-element of \code{\link{create_limma_design}}.}
+\item{contrasts}{A contrast matrix as returned by \code{\link{create_limma_design}}.
+This matrix defines the comparisons of interest (e.g., "BFG-ASC").}
 
-\item{feature_name}{Character. Name of the column that identifies features
-(e.g. \code{"protein_group_accessions"} or \code{"site_ID"}).
-Must not be \code{NULL}.}
+\item{feature_name}{Character. Name of the column in \code{input_data} that identifies
+features (e.g., \code{"protein_group_accessions"} or \code{"site_ID"}). Must not be \code{NULL}.}
 }
 \value{
-A \code{data.table} with one row per feature-contrast combination
-containing the standard limma \code{topTable} columns (\code{logFC},
-\code{AveExpr}, \code{t}, \code{P.Value}, \code{adj.P.Val}, \code{B})
-plus \code{contrast}, \code{feature}, \code{cond1}, \code{cond2},
-\code{count_val_cond1}, and \code{count_val_cond2}.
+A \code{data.table} with one row per feature-contrast combination containing:
+\describe{
+\item{Standard limma topTable columns:}{ \code{logFC}, \code{AveExpr}, \code{t},
+\code{P.Value}, \code{adj.P.Val}, \code{B}.}
+\item{contrast:}{The contrast name (e.g., "BFG-ASC").}
+\item{feature:}{The feature identifier (e.g., protein accession).}
+\item{cond1, cond2:}{For pairwise contrasts, the two conditions being compared.}
+\item{count_val_cond1, count_val_cond2:}{For pairwise contrasts, the number of non-NA
+values for each condition.}
+\item{cond, count_val_cond:}{For single-term contrasts, the condition and count of non-NA values.}
+}
 }
 \description{
-Fits a linear model with empirical Bayes moderation to the quantification
-data, applies the supplied contrasts, and returns tidy top-table results for
-every pairwise comparison augmented with per-condition measured-value counts.
+Fits a linear model with empirical Bayes moderation to quantification data,
+applies the supplied contrasts, and returns tidy top-table results for every
+contrast. Results are augmented with per-condition measured-value counts.
 }
+\section{Details}{
+
+This function performs the following steps:
+\itemize{
+\item{Reshapes \code{input_data} into a wide-format matrix suitable for \code{limma}.}
+\item{Fits a linear model using \code{\link[limma]{lmFit}}.}
+\item{Applies contrasts using \code{\link[limma]{contrasts.fit}}.}
+\item{Prints an MA plot for diagnostic purposes using \code{\link[limma]{plotMA}}.}
+\item{Applies empirical Bayes moderation using \code{\link[limma]{eBayes}} with \code{robust = TRUE}.}
+\item{Extracts top tables for each contrast and augments them with per-condition counts.}
+}
+
+The function handles both pairwise contrasts (e.g., "BFG-ASC") and single-term contrasts
+(e.g., "BMI"). For pairwise contrasts, it adds columns for the two conditions and their
+respective counts of non-NA values. For single-term contrasts, it adds a column for the
+condition and its count of non-NA values.
+}
+
+\section{Examples}{
+
+\preformatted{
+# Example 1: Basic usage with pairwise contrast
+design_result <- create_limma_design(
+  input_data = my_data,
+  all_cond_pairs = c("BFG-ASC")
+)
+limma_results <- run_limma(
+  input_data = my_data,
+  design = design_result$design,
+  contrasts = design_result$contrasts,
+  feature_name = "protein_group_accessions"
+)
+
+# Example 2: With a single-term contrast (e.g., BMI)
+design_result <- create_limma_design(
+  input_data = my_data,
+  formula = ~ condition + BMI,
+  all_cond_pairs = c("BMI")
+)
+limma_results <- run_limma(
+  input_data = my_data,
+  design = design_result$design,
+  contrasts = design_result$contrasts,
+  feature_name = "protein_group_accessions"
+)
+}
+}
+
 \seealso{
-\code{\link{create_limma_design}}
+\code{\link{create_limma_design}} for creating the design and contrast matrices.
+\code{\link[limma]{lmFit}}, \code{\link[limma]{contrasts.fit}}, \code{\link[limma]{eBayes}},
+\code{\link[limma]{topTable}} for details on the underlying limma functions.
 }
